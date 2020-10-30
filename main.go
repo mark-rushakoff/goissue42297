@@ -163,11 +163,6 @@ type Point interface {
 	// MarshalBinary returns a binary representation of the point.
 	MarshalBinary() ([]byte, error)
 
-	// PrecisionString returns a string representation of the point. If there
-	// is a timestamp associated with the point then it will be specified in the
-	// given unit.
-	PrecisionString(precision string) string
-
 	// RoundedString returns a string representation of the point. If there
 	// is a timestamp associated with the point, then it will be rounded to the
 	// given duration.
@@ -490,39 +485,9 @@ func parsePoint(buf []byte, defaultTime time.Time, precision string) (Point, err
 		pt.time = defaultTime
 		pt.SetPrecision(precision)
 	} else {
-		ts, err := parseIntBytes(ts, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		pt.time, err = SafeCalcTime(ts, precision)
-		if err != nil {
-			return nil, err
-		}
-
-		// Determine if there are illegal non-whitespace characters after the
-		// timestamp block.
-		for pos < len(buf) {
-			if buf[pos] != ' ' {
-				return nil, ErrInvalidPoint
-			}
-			pos++
-		}
+		panic("unreachable")
 	}
 	return pt, nil
-}
-
-// GetPrecisionMultiplier will return a multiplier for the precision specified.
-func GetPrecisionMultiplier(precision string) int64 {
-	d := time.Nanosecond
-	switch precision {
-	case "us":
-		d = time.Microsecond
-	case "ms":
-		d = time.Millisecond
-	case "s":
-		d = time.Second
-	}
-	return int64(d)
 }
 
 // scanKey scans buf starting at i for the measurement and tag portion of the point.
@@ -1834,17 +1799,6 @@ func (p *point) UnmarshalBinary(b []byte) error {
 	return p.time.UnmarshalBinary(b)
 }
 
-// PrecisionString returns a string representation of the point. If there
-// is a timestamp associated with the point then it will be specified in the
-// given unit.
-func (p *point) PrecisionString(precision string) string {
-	if p.Time().IsZero() {
-		return fmt.Sprintf("%s %s", p.Key(), string(p.fields))
-	}
-	return fmt.Sprintf("%s %s %d", p.Key(), string(p.fields),
-		p.UnixNano()/GetPrecisionMultiplier(precision))
-}
-
 // RoundedString returns a string representation of the point. If there
 // is a timestamp associated with the point, then it will be rounded to the
 // given duration.
@@ -2737,36 +2691,12 @@ var (
 	ErrTimeOutOfRange = fmt.Errorf("time outside range %d - %d", MinNanoTime, MaxNanoTime)
 )
 
-// SafeCalcTime safely calculates the time given. Will return error if the time is outside the
-// supported range.
-func SafeCalcTime(timestamp int64, precision string) (time.Time, error) {
-	mult := GetPrecisionMultiplier(precision)
-	if t, ok := safeSignedMult(timestamp, mult); ok {
-		tme := time.Unix(0, t).UTC()
-		return tme, CheckTime(tme)
-	}
-
-	return time.Time{}, ErrTimeOutOfRange
-}
-
 // CheckTime checks that a time is within the safe range.
 func CheckTime(t time.Time) error {
 	if t.Before(minNanoTime) || t.After(maxNanoTime) {
 		return ErrTimeOutOfRange
 	}
 	return nil
-}
-
-// Perform the multiplication and check to make sure it didn't overflow.
-func safeSignedMult(a, b int64) (int64, bool) {
-	if a == 0 || b == 0 || a == 1 || b == 1 {
-		return a * b, true
-	}
-	if a == MinNanoTime || b == MaxNanoTime {
-		return 0, false
-	}
-	c := a * b
-	return c, c/b == a
 }
 
 ///
