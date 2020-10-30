@@ -150,9 +150,6 @@ type Point interface {
 	// UnixNano returns the timestamp of the point as nanoseconds since Unix epoch.
 	UnixNano() int64
 
-	// HashID returns a non-cryptographic checksum of the point's key.
-	HashID() uint64
-
 	// Key returns the key (measurement joined with tags) of the point.
 	Key() []byte
 
@@ -1821,14 +1818,6 @@ func (p *point) unmarshalBinary() (Fields, error) {
 	return fields, nil
 }
 
-// HashID returns a non-cryptographic checksum of the point's key.
-func (p *point) HashID() uint64 {
-	h := NewInlineFNV64a()
-	h.Write(p.key)
-	sum := h.Sum64()
-	return sum
-}
-
 // UnixNano returns the timestamp of the point as nanoseconds since Unix epoch.
 func (p *point) UnixNano() int64 {
 	return p.Time().UnixNano()
@@ -2557,38 +2546,6 @@ func unsafeBytesToString(in []byte) string {
 	}
 	s := *(*string)(unsafe.Pointer(&dst))
 	return s
-}
-
-///
-// from stdlib hash/fnv/fnv.go
-const (
-	prime64  = 1099511628211
-	offset64 = 14695981039346656037
-)
-
-// InlineFNV64a is an alloc-free port of the standard library's fnv64a.
-// See https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function.
-type InlineFNV64a uint64
-
-// NewInlineFNV64a returns a new instance of InlineFNV64a.
-func NewInlineFNV64a() InlineFNV64a {
-	return offset64
-}
-
-// Write adds data to the running hash.
-func (s *InlineFNV64a) Write(data []byte) (int, error) {
-	hash := uint64(*s)
-	for _, c := range data {
-		hash ^= uint64(c)
-		hash *= prime64
-	}
-	*s = InlineFNV64a(hash)
-	return len(data), nil
-}
-
-// Sum64 returns the uint64 of the current resulting hash.
-func (s *InlineFNV64a) Sum64() uint64 {
-	return uint64(*s)
 }
 
 ///
