@@ -44,22 +44,11 @@ import (
 	"unsafe"
 )
 
-var maxFloat64 = strconv.FormatFloat(math.MaxFloat64, 'f', 1, 64)
-
 func main() {
-	p, err := ParsePointsString(fmt.Sprintf(`cpu,host=serverA,region=us-west value=%s`, string(maxFloat64)))
-	if err != nil {
-		// t.Errorf(`ParsePoints("%s") mismatch. got %v, exp nil`, `cpu,host=serverA,region=us-west value=9223372036854775807`, err)
-		panic(err)
-	}
-	fields, err := p[0].Fields()
+	_, err := ParsePoints([]byte("cpu,host=serverA,region=us-west value=" + strconv.FormatFloat(math.MaxFloat64, 'f', 1, 64)))
 	if err != nil {
 		panic(err)
 	}
-	if exp, got := math.MaxFloat64, fields["value"].(float64); exp != got {
-		panic(fmt.Sprintf("ParsePoints Value mismatch. \nexp: %v\ngot: %v", exp, got))
-	}
-
 }
 
 const (
@@ -326,11 +315,6 @@ const (
 // will be returned in addition to the points that parsed successfully.
 func ParsePoints(buf []byte) ([]Point, error) {
 	return ParsePointsWithPrecision(buf, time.Now().UTC(), "n")
-}
-
-// ParsePointsString is identical to ParsePoints but accepts a string.
-func ParsePointsString(buf string) ([]Point, error) {
-	return ParsePoints([]byte(buf))
 }
 
 // ParseKey returns the measurement name and tags from a point.
