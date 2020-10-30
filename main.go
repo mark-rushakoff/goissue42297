@@ -164,19 +164,6 @@ type Point interface {
 	// MarshalBinary returns a binary representation of the point.
 	MarshalBinary() ([]byte, error)
 
-	// RoundedString returns a string representation of the point. If there
-	// is a timestamp associated with the point, then it will be rounded to the
-	// given duration.
-	RoundedString(d time.Duration) string
-
-	// Split will attempt to return multiple points with the same timestamp whose
-	// string representations are no longer than size. Points with a single field or
-	// a point without a timestamp may exceed the requested size.
-	Split(size int) []Point
-
-	// Round will round the timestamp of the point to the given duration.
-	Round(d time.Duration)
-
 	// StringSize returns the length of the string that would be returned by String().
 	StringSize() int
 
@@ -1506,11 +1493,6 @@ func (p *point) SetTime(t time.Time) {
 	p.time = t
 }
 
-// Round will round the timestamp of the point to the given duration.
-func (p *point) Round(d time.Duration) {
-	p.time = p.time.Round(d)
-}
-
 // Tags returns the tag set for the point.
 func (p *point) Tags() Tags {
 	if p.cachedTags != nil {
@@ -1800,17 +1782,6 @@ func (p *point) UnmarshalBinary(b []byte) error {
 	return p.time.UnmarshalBinary(b)
 }
 
-// RoundedString returns a string representation of the point. If there
-// is a timestamp associated with the point, then it will be rounded to the
-// given duration.
-func (p *point) RoundedString(d time.Duration) string {
-	if p.Time().IsZero() {
-		return fmt.Sprintf("%s %s", p.Key(), string(p.fields))
-	}
-	return fmt.Sprintf("%s %s %d", p.Key(), string(p.fields),
-		p.time.Round(d).UnixNano())
-}
-
 func (p *point) unmarshalBinary() (Fields, error) {
 	iter := p.FieldIterator()
 	fields := make(Fields, 8)
@@ -1861,45 +1832,6 @@ func (p *point) HashID() uint64 {
 // UnixNano returns the timestamp of the point as nanoseconds since Unix epoch.
 func (p *point) UnixNano() int64 {
 	return p.Time().UnixNano()
-}
-
-// Split will attempt to return multiple points with the same timestamp whose
-// string representations are no longer than size. Points with a single field or
-// a point without a timestamp may exceed the requested size.
-func (p *point) Split(size int) []Point {
-	if p.time.IsZero() || p.StringSize() <= size {
-		return []Point{p}
-	}
-
-	// key string, timestamp string, spaces
-	size -= len(p.key) + len(strconv.FormatInt(p.time.UnixNano(), 10)) + 2
-
-	var points []Point
-	var start, cur int
-
-	for cur < len(p.fields) {
-		end, _ := scanTo(p.fields, cur, '=')
-		end, _ = scanFieldValue(p.fields, end+1)
-
-		if cur > start && end-start > size {
-			points = append(points, &point{
-				key:    p.key,
-				time:   p.time,
-				fields: p.fields[start : cur-1],
-			})
-			start = cur
-		}
-
-		cur = end + 1
-	}
-
-	points = append(points, &point{
-		key:    p.key,
-		time:   p.time,
-		fields: p.fields[start:],
-	})
-
-	return points
 }
 
 // Tag represents a single key/value tag pair.
