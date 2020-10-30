@@ -49,6 +49,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("ok")
 }
 
 const (
