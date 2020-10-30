@@ -1,5 +1,8 @@
 This repository is a reproducer for https://github.com/golang/go/issues/42297.
 
+It turns out the actual reproducer is much simpler than I first expected,
+but the repository can stick around for posterity's sake.
+
 ```
 $ go version && go run main.go
 go version go1.15.3 darwin/amd64
@@ -7,10 +10,10 @@ ok
 
 $ gotip version && gotip run main.go
 go version devel +256d729c0b Fri Oct 30 15:26:28 2020 +0000 darwin/amd64
-panic: unable to parse 'cpu,host=serverA,region=us-west value=179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0': invalid float
+panic: strconv.ParseFloat: parsing "0.5": invalid bit size 10
 
 goroutine 1 [running]:
 main.main()
-	/Users/mr/tmp/goissue42297/main.go:50 +0xfb
+	/Users/mr/tmp/goissue42297/main.go:12 +0xf7
 exit status 2
 ```
