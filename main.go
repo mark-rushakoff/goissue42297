@@ -126,17 +126,11 @@ type Point interface {
 	// Tags returns the tag set for the point.
 	Tags() Tags
 
-	// ForEachTag iterates over each tag invoking fn.  If fn return false, iteration stops.
-	ForEachTag(fn func(k, v []byte) bool)
-
 	// AddTag adds or replaces a tag value for a point.
 	AddTag(key, value string)
 
 	// SetTags replaces the tags for the point.
 	SetTags(tags Tags)
-
-	// HasTag returns true if the tag exists for the point.
-	HasTag(tag []byte) bool
 
 	// Fields returns the fields for the point.
 	Fields() (Fields, error)
@@ -455,7 +449,7 @@ func parsePoint(buf []byte, defaultTime time.Time, precision string) (Point, err
 	}
 
 	// scan the last block which is an optional integer timestamp
-	pos, ts, err := scanTime(buf, pos)
+	_, ts, err := scanTime(buf, pos)
 	if err != nil {
 		return nil, err
 	}
@@ -1450,16 +1444,6 @@ func NewPointFromBytes(b []byte) (Point, error) {
 	return p, nil
 }
 
-// MustNewPoint returns a new point with the given measurement name, tags, fields and timestamp.  If
-// an unsupported field value (NaN) is passed, this function panics.
-func MustNewPoint(name string, tags Tags, fields Fields, time time.Time) Point {
-	pt, err := NewPoint(name, tags, fields, time)
-	if err != nil {
-		panic(err.Error())
-	}
-	return pt
-}
-
 // Key returns the key (measurement joined with tags) of the point.
 func (p *point) Key() []byte {
 	return p.key
@@ -1497,27 +1481,6 @@ func (p *point) Tags() Tags {
 	}
 	p.cachedTags = parseTags(p.key, nil)
 	return p.cachedTags
-}
-
-func (p *point) ForEachTag(fn func(k, v []byte) bool) {
-	walkTags(p.key, fn)
-}
-
-func (p *point) HasTag(tag []byte) bool {
-	if len(p.key) == 0 {
-		return false
-	}
-
-	var exists bool
-	walkTags(p.key, func(key, value []byte) bool {
-		if bytes.Equal(tag, key) {
-			exists = true
-			return false
-		}
-		return true
-	})
-
-	return exists
 }
 
 func walkTags(buf []byte, fn func(key, value []byte) bool) {
